@@ -1,0 +1,105 @@
+import pandas as pd
+import numpy as np
+import yfinance as yf
+import datetime
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as pl
+import scipy as sci
+
+year=int(input("Enter year:"))
+month=int(input("Enter month:"))
+day=int(input("Enter day:"))
+eyear=int(input("Enter ending year:"))
+emonth=int(input("Enter ending month:"))
+eday=int(input("Enter ending day:"))
+ticker1=input("Enter yf ticker1:")
+ticker2=input("Enter yf ticker2:")
+ticker3=input("Enter yf ticker3:")
+s=datetime.datetime(year,month,day)
+e=datetime.datetime(eyear,emonth,eday)
+db1=yf.download(ticker1,start=s,end=e)
+db2=yf.download(ticker2,start=s,end=e)
+db3=yf.download(ticker3,start=s,end=e)
+df1=pd.DataFrame(db1)
+df2=pd.DataFrame(db2)
+df3=pd.DataFrame(db3)
+df1.drop(["High","Low","Volume"],axis=1,inplace=True)
+df2.drop(["High","Low","Volume"],axis=1,inplace=True)
+df3.drop(["High","Low","Volume"],axis=1,inplace=True)
+###Creation of the dataset used in the analysis.
+###Ticker ler choose, time to time, the stocks that will be involved in the analysis.
+###Year, month, day are the initial time (t-zero) of the time serie used in the DataSet.
+###Eyear, emonth, eday are the upper bound of the timeSeires###
+df1.columns=[(ticker1+""+"Open"),(ticker1+""+"Close"),(ticker1+""+"Adj Close")]
+df2.columns=[(ticker2+""+"Open"),(ticker2+""+"Close"),(ticker2+""+"Adj Close")]
+df3.columns=[(ticker3+""+"Open"),(ticker3+""+"Close"),(ticker3+""+"Adj Close")]
+df=pd.concat([df1,df2,df3],axis=1)
+###Creation and modification of the DataFrame###
+df["RACERT"]=df["RACE.MIOpen"].pct_change()
+df["TSLART"]=df["TSLAOpen"].pct_change()
+df["AMZNRT"]=df["AMZNOpen"].pct_change()
+df["PORT"]=df["RACERT"]*0.6+df["TSLART"]*0.4
+df[["RACERT","TSLART","AMZNRT","PORT"]].describe()
+scaler=StandardScaler()
+x=np.array(df["RACERT"]).reshape(-1,1)
+y=np.array(df["TSLART"]).reshape(-1,1)
+z=y=np.array(df["AMZNRT"]).reshape(-1,1)
+p=np.array(df["PORT"]).reshape(-1,1)
+
+u=scaler.fit_transform(x)
+c=scaler.fit_transform(y)
+r=scaler.fit_transform(z)
+pt=scaler.fit_transform(p)
+u=np.squeeze(u)
+c=np.squeeze(c)
+r=np.squeeze(r)
+pt=np.squeeze(pt)
+df1=pd.DataFrame((u,c,r,pt))
+df1=df1.T
+df1.set_index(df.index)
+df1.columns=["RACE.MI","TSLA","AMZN","PORT"]
+###Creation of the new DataFrame composed with the MinMax Scaled Values of the Adj Closed price of the stocks###
+print(df1.describe())
+print((df1["TSLA"].corr(df1["RACE.MI"])),df1["TSLA"].corr(df1["AMZN"]))
+corrMatrix=df1.corr()
+print(corrMatrix)
+
+###H-zero:PORT MEAN RET >  AMZN RET###
+print(df1["PORT"].mean(),"  ",df1["AMZN"].mean())
+zdf=df1["PORT"].sample(n=400)
+zdf.mean()
+###evaluation of the Z value FOR ONE TAIL TEST###
+###z=CAMP_MEAN-MEAN/((SQRT*RADQ(N_SAMPLES)))###
+###ALPHA=0,05###
+###P-VALUE EVA##
+def radq(x):
+    return x**(1/2)
+print("****************************************************")
+print("ALPHA: 0,05")
+
+Z=(((zdf.mean()-df1["AMZN"].sample(n=400).mean())/((np.std(zdf)/(radq(400))))))
+print("****************************************************")
+print("Z value: "," ", Z)
+print("****************************************************")
+if -1.65<Z:
+    print("H-ZERO TRUE")
+else:
+    print("REFUSE H-ZERO")
+### P(Z)<Z <ALPHA=0,05 ####
+    
+print("****************************************************")
+PV=0.3485
+print("P-Value: "," ",PV)
+print("****************************************************")
+if PV< 0.05:
+    print("REFUSE H-ZERO")
+else:
+    print("ACCEPT H-ZERO")
+    
+print("****************************************************")
+
+
+
+
+
+
